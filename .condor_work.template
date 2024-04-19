@@ -1,0 +1,18 @@
+executable		= $JOB_EXE
+arguments		= $JOB_ARG
+
+should_transfer_files	= IF_NEEDED
+when_to_transfer_output	= ON_EXIT
+
+initialdir		= $JOB_DIR/job_$JOB_NUMBER
+
+request_cpus	= 1
+request_memory	= 1536M
+request_disk	= 512M
+
+#num_retries	= 2
+output		= out.txt
+log		= log.txt
+error		= err.txt
+
+queue $JOB_COUNT
