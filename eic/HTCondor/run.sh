@@ -156,6 +156,7 @@ do
 	condor_submit condor_work.sub | grep cluster | sed 's/.*cluster \([0-9]*\)./\1/' >> ${BATCH_NAME_FILE}
   echo "job $i submitted"
 done
+rm condor_work.sub
 
 ########################################################
 # postprocess                                          #
