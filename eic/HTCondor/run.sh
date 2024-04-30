@@ -1,19 +1,42 @@
 #!/usr/bin/bash
 
+watch() {
+  while [ 1 ]; do
+    JOB_STATUS=$(condor_q);
+    LINES=$(printf "${JOB_STATUS}" | wc -l | tr -d ' ');
+    printf "\\033[1J\\033[${LINES}F";
+#   printf "\\033[${LINES}F";
+#   for i in $(seq 1 ${LINES}); do
+#     printf "\n"
+#   done
+#   printf "\\033[${LINES}F";
+    printf "${JOB_STATUS}"
+    sleep 1;
+  done
+}
+
+if [ "$1" == "-w" ]; then
+  watch;
+  exit
+fi
+
 set -e
 
+WAIT_JOB_COMPLETION=1
 export TIME="$(date "+%y%m%d_%H%M%S")"
 echo "TIME=$TIME"
 
 ########################################################
-# job executable                                       #
+# job executable & environment variables               #
 ########################################################
-export JOB_EXE=$HOME/eic/simulation_parallel.sh
+EIC_DIR="/Users/skku_server/eic"
+
+export JOB_EXE=${EIC_DIR}/simulation_parallel.sh
 export POSTPROCESS_EXE=
 
 export JOB_SIZE=16
 export JOB_NUM_ARR=$(seq 0 $((JOB_SIZE - 1)))
-BENCHMARK_DIR="$HOME/eic/detector_benchmarks"
+export BENCHMARK_DIR="${EIC_DIR}/detector_benchmarks"
 
 ########################################################
 # job directory                                        #
@@ -22,8 +45,8 @@ export JOB_DIR="${BENCHMARK_DIR}/benchmark_${TIME}"
 
 if [ -a $JOB_DIR ];
 then
-	echo "$0: $JOB_DIR directory already exists."
-	exit 1
+  echo "$0: $JOB_DIR directory already exists."
+  exit 1
 fi
 
 echo "job directory list:"
@@ -31,7 +54,7 @@ mkdir $JOB_DIR
 for i in $(seq ${JOB_SIZE})
 do
   # .condor_work.template
-	mkdir $JOB_DIR/job_$i
+  mkdir $JOB_DIR/job_$i
   echo "$JOB_DIR/job_$i"
 done
 
@@ -40,9 +63,10 @@ done
 ########################################################
 
 # ============================================= 
-# file 1 for generated input
-export PREFIX_FILES_0="./benchmark_${TIME}/gen"
-mkdir -p $JOB_DIR/gen
+# file 0 for generated input
+export PREFIX_FILES_0="${JOB_DIR}/gen"
+mkdir -p ${PREFIX_FILES_0}
+chmod 775 ${PREFIX_FILES_0}
 export FILES_0=(\
   gen_0.hepmc \
   gen_1.hepmc \
@@ -66,14 +90,15 @@ echo ""
 echo "FILES_0 list:"
 for i in $(seq 0 $((JOB_SIZE - 1)))
 do
-	FILES_0[$i]="${PREFIX_FILES_0}/${FILES_0[$i]}"
-	echo "${FILES_0[$i]}"
+  FILES_0[$i]="${PREFIX_FILES_0}/${FILES_0[$i]}"
+  echo "${FILES_0[$i]}"
 done
 
 # ============================================= 
-# file 2
-export PREFIX_FILES_1="./benchmark_${TIME}/sim"
+# file 1
+export PREFIX_FILES_1="${JOB_DIR}/sim"
 mkdir -p $JOB_DIR/sim
+chmod 775 ${PREFIX_FILES_1}
 export FILES_1=(\
   sim_0.edm4hep.root \
   sim_1.edm4hep.root \
@@ -97,14 +122,15 @@ echo ""
 echo "FILES_1 list:"
 for i in $(seq 0 $((JOB_SIZE - 1)))
 do
-	FILES_1[$i]="${PREFIX_FILES_1}/${FILES_1[$i]}"
-	echo "${FILES_1[$i]}"
+  FILES_1[$i]="${PREFIX_FILES_1}/${FILES_1[$i]}"
+  echo "${FILES_1[$i]}"
 done
 
 # ============================================= 
-# file 3
-export PREFIX_FILES_2="./benchmark_${TIME}/rec"
+# file 2
+export PREFIX_FILES_2="${JOB_DIR}/rec"
 mkdir -p $JOB_DIR/rec
+chmod 775 ${PREFIX_FILES_2}
 export FILES_2=(\
   rec_0.root \
   rec_1.root \
@@ -128,63 +154,72 @@ echo ""
 echo "FILES_2 list:"
 for i in $(seq 0 $((JOB_SIZE - 1)))
 do
-	FILES_2[$i]="${PREFIX_FILES_2}/${FILES_2[$i]}"
-	echo "${FILES_2[$i]}"
+  FILES_2[$i]="${PREFIX_FILES_2}/${FILES_2[$i]}"
+  echo "${FILES_2[$i]}"
 done
 
 sleep 1
 
-BATCH_NAME_FILE=.job_ids_${TIME}
+#rm .job_ids_[0-9]*_[0-9]*
+#BATCH_NAME_FILE=.job_ids_${TIME}
+#touch $BATCH_NAME_FILE && chmod 666 $BATCH_NAME_FILE
+BATCH_NAMES=""
 for i in $(seq 0 $((JOB_SIZE - 1)))
 do
-	export JOB_NUMBER=$((i + 1))
+  export JOB_NUMBER=$((i + 1))
 
-	########################################################
-	# argument list for JOB_EXE.                           #
-  # $1=$JOB_NUMBER (by default)                          #
+  ########################################################
+  # argument list for JOB_EXE.                           #
+  # $1=$JOB_NUMBER                                       #
   # $2=${FILES_0[$JOB_NUMBER]}                           #
   # $3=${FILES_1[$JOB_NUMBER]}                           #
   # $4=${FILES_2[$JOB_NUMBER]}                           #
+  # $5=${BENCHMARK_DIR}                                  #
   # you can change this behavior by changing this file   #
   # and .condor_work.template                            #
-	########################################################
-	export JOB_ARG='"'"$i ${FILES_0[$i]} ${FILES_1[$i]} ${FILES_2[$i]}"'"'
+  ########################################################
+  export JOB_ARG='"'"$i ${FILES_0[$i]} ${FILES_1[$i]} ${FILES_2[$i]} ${BENCHMARK_DIR}"'"'
 
-	# generate condor job submit file from '.condor_work.template'.
-	envsubst < .condor_work.template > condor_work.sub
+  # generate condor job submit file from '.condor_work.template'.
+  envsubst < .condor_work.template > condor_work.sub
 
-	condor_submit condor_work.sub | grep cluster | sed 's/.*cluster \([0-9]*\)./\1/' >> ${BATCH_NAME_FILE}
+  #condor_submit condor_work.sub | grep cluster | sed 's/.*cluster \([0-9]*\)./\1/' >> ${BATCH_NAME_FILE}
+  BATCH_NAME=$(condor_submit condor_work.sub | grep cluster | sed 's/.*cluster \([0-9]*\)./\1/')
+  BATCH_NAMES="${BATCH_NAME}\n${BATCH_NAMES}"
   echo "job $i submitted"
+  rm condor_work.sub
 done
-rm condor_work.sub
 
 ########################################################
 # postprocess                                          #
 ########################################################
-if [ "$POSTPROCESS_EXE" == "" ]; then
-	rm $BATCH_NAME_FILE
+if [[ "$POSTPROCESS_EXE" == "" && "$WAIT_JOB_COMPLETION" == "" ]]; then
+  #rm $BATCH_NAME_FILE
   echo "all jobs are submitted."
-	exit
+  exit
 fi
 
 # wait until jobs are finished
-BATCH_NAMES=$(cat $BATCH_NAME_FILE | sed 's/\([0-9]\) \([0-9]\)/\1|\2/g')
+BATCH_NAMES=$(echo -e ${BATCH_NAMES} | sed 's/\([0-9]\) \([0-9]\)/\1|\2/g')
 WAIT=1
 COUNT=0
 echo "waiting for jobs to be finished"
 while [ $WAIT -eq 1 ];
 do
-	RET=$(condor_q | head -n $((JOB_SIZE + 1)) | tail -n $((JOB_SIZE)) | sed 's/.* ID: \([0-9]*\) .*/\1/' | tr '\n' ' ' | grep -E "'""$BATCH_NAMES""'" > /dev/null; echo $?)
-	if [ $RET -eq 1 ]; then
-		WAIT=0
-	fi
-	sleep 1
-	printf "."
-	if [ $COUNT -eq 5 ]; then
-		printf "\r            \r"
-	fi
-	COUNT=$((COUNT + 1))
+  RET=$(condor_q | head -n $((JOB_SIZE + 1)) | tail -n $((JOB_SIZE)) | sed 's/.* ID: \([0-9]*\) .*/\1/' | tr '\n' ' ' | grep -E "'""$BATCH_NAMES""'" > /dev/null; echo $?)
+  if [ $RET -eq 1 ]; then
+    WAIT=0
+  fi
+  JOB_STATUS=$(condor_q);
+  LINES=$(printf "${JOB_STATUS}" | wc -l | tr -d ' ');
+  printf "\\033[1J\\033[${LINES}F";
+  printf "${JOB_STATUS}"
+  sleep 1;
 done
+
+if [ "$POSTPROCESS_EXE" == "" ]; then
+  exit
+fi
 
 echo "post-processing"
 bash -c "$POSTPROCESS_EXE"
