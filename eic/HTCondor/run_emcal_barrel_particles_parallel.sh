@@ -27,16 +27,18 @@ export JUGGLER_REC_FILE="${REC_FILE}"
 echo "JUGGLER_N_EVENTS = ${JUGGLER_N_EVENTS}"
 echo "DETECTOR = ${DETECTOR}"
 
-GEN=benchmarks/barrel_ecal/scripts/emcal_barrel_particles_gen_${JOB_NUMBER}.cxx
+GEN=benchmarks/barrel_ecal/scripts/emcal_barrel_particles_gen_${TIME}_${JOB_NUMBER}.cxx
 
-cp benchmarks/barrel_ecal/scripts/emcal_barrel_particles_gen.cxx ${GEN} && sed -ibackup_${JOB_NUMBER} "s/emcal_barrel_particles_gen/emcal_barrel_particles_gen_${JOB_NUMBER}/" ${GEN}
+cp benchmarks/barrel_ecal/scripts/emcal_barrel_particles_gen.cxx ${GEN} && sed -ibackup_${JOB_NUMBER} "s/emcal_barrel_particles_gen/emcal_barrel_particles_gen_${TIME}_${JOB_NUMBER}/" ${GEN}
 
 # Generate the input events
-root -b -q "benchmarks/barrel_ecal/scripts/emcal_barrel_particles_gen_${JOB_NUMBER}.cxx+(${JUGGLER_N_EVENTS}, ${E_START}, ${E_END}, \"${PARTICLE}\")"
+root -b -q "${GEN}+(${JUGGLER_N_EVENTS}, ${E_START}, ${E_END}, \"${PARTICLE}\")"
 if [[ "$?" -ne "0" ]] ; then
   echo "ERROR running script: generating input events"
   exit 1
 fi
+
+rm ${GEN}
 
 ddsim --runType batch \
       -v WARNING \

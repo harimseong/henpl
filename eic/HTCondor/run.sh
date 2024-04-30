@@ -4,13 +4,10 @@ watch() {
   while [ 1 ]; do
     JOB_STATUS=$(condor_q);
     LINES=$(printf "${JOB_STATUS}" | wc -l | tr -d ' ');
-    printf "\\033[1J\\033[${LINES}F";
-#   printf "\\033[${LINES}F";
-#   for i in $(seq 1 ${LINES}); do
-#     printf "\n"
-#   done
-#   printf "\\033[${LINES}F";
+    LINES=$((LINES + 1))
+    printf "\\033[${LINES}F\\033[0J";
     printf "${JOB_STATUS}"
+    printf "EXIT: Ctrl + C"
     sleep 1;
   done
 }
@@ -31,7 +28,7 @@ echo "TIME=$TIME"
 ########################################################
 EIC_DIR="/Users/skku_server/eic"
 
-export JOB_EXE=${EIC_DIR}/simulation_parallel.sh
+export JOB_EXE=${HOME}/eic/simulation_parallel.sh
 export POSTPROCESS_EXE=
 
 export JOB_SIZE=16
@@ -41,7 +38,7 @@ export BENCHMARK_DIR="${EIC_DIR}/detector_benchmarks"
 ########################################################
 # job directory                                        #
 ########################################################
-export JOB_DIR="${BENCHMARK_DIR}/benchmark_${TIME}"
+export JOB_DIR="${HOME}/eic/benchmark_${TIME}"
 
 if [ -a $JOB_DIR ];
 then
@@ -160,9 +157,6 @@ done
 
 sleep 1
 
-#rm .job_ids_[0-9]*_[0-9]*
-#BATCH_NAME_FILE=.job_ids_${TIME}
-#touch $BATCH_NAME_FILE && chmod 666 $BATCH_NAME_FILE
 BATCH_NAMES=""
 for i in $(seq 0 $((JOB_SIZE - 1)))
 do
@@ -183,7 +177,6 @@ do
   # generate condor job submit file from '.condor_work.template'.
   envsubst < .condor_work.template > condor_work.sub
 
-  #condor_submit condor_work.sub | grep cluster | sed 's/.*cluster \([0-9]*\)./\1/' >> ${BATCH_NAME_FILE}
   BATCH_NAME=$(condor_submit condor_work.sub | grep cluster | sed 's/.*cluster \([0-9]*\)./\1/')
   BATCH_NAMES="${BATCH_NAME}\n${BATCH_NAMES}"
   echo "job $i submitted"
@@ -204,16 +197,20 @@ BATCH_NAMES=$(echo -e ${BATCH_NAMES} | sed 's/\([0-9]\) \([0-9]\)/\1|\2/g')
 WAIT=1
 COUNT=0
 echo "waiting for jobs to be finished"
+condor_q
 while [ $WAIT -eq 1 ];
 do
-  RET=$(condor_q | head -n $((JOB_SIZE + 1)) | tail -n $((JOB_SIZE)) | sed 's/.* ID: \([0-9]*\) .*/\1/' | tr '\n' ' ' | grep -E "'""$BATCH_NAMES""'" > /dev/null; echo $?)
+  #RET=$(condor_q | head -n $((JOB_SIZE + 1)) | tail -n $((JOB_SIZE)) | sed 's/.* ID: \([0-9]*\) .*/\1/' | tr '\n' ' ' | grep -E "'""$BATCH_NAMES""'" > /dev/null; echo $?)
+  RET=$(condor_q | grep "ID: " | sed 's/.* ID: \([0-9]*\) .*/\1/' | tr '\n' ' ' | grep -E "'""$BATCH_NAMES""'" > /dev/null; echo $?)
   if [ $RET -eq 1 ]; then
     WAIT=0
   fi
   JOB_STATUS=$(condor_q);
   LINES=$(printf "${JOB_STATUS}" | wc -l | tr -d ' ');
-  printf "\\033[1J\\033[${LINES}F";
+  LINES=$((LINES + 1))
+  printf "\\033[${LINES}F\\033[0J";
   printf "${JOB_STATUS}"
+  printf "EXIT: Ctrl + C"
   sleep 1;
 done
 

@@ -8,15 +8,19 @@
 if [ ! -n "$EIC_SHELL" ]; then
   NUM_CONTAINER=$(docker ps | grep eicweb | wc -l)
   if [ $NUM_CONTAINER -gt 1 ]; then
-    echo "There're more than one containers. Containers should be stopped except one."
-    exit
+    echo "ERROR: There're more than one attachable containers. Containers should be stopped except one."
+    exit 1
   fi
   CONTAINER_ID=$(docker ps | grep eicweb | cut -d ' ' -f 1)
   echo "CONTAINER_ID=$CONTAINER_ID"
   if [ -n "$CONTAINER_ID" ]; then
-    docker exec -e EIC_SHELL=1 ${CONTAINER_ID} eic-shell "bash simulation_parallel.sh $1 $2 $3 $4 $5"
+    docker exec -e EIC_SHELL=1 ${CONTAINER_ID} eic-shell "bash simulation_parallel.sh $1 $2 $3 $4 $5 $6"
   else
-    docker run --platform linux/amd64  -v /Volumes:/Volumes -v /Users:/Users -v /tmp:/tmp -w=$HOME/eic --rm -e EIC_SHELL_PREFIX=$USER/eic/local -e EIC_SHELL=1 eicweb/jug_xl:nightly eic-shell "bash $0 $1 $2 $3 $4 $5"
+    echo "ERROR: No attachable container found. Run eic-shell in other terminal."
+    echo "If it's not fixed while eic-shell is running, check \`docker info\`. If outputs from inside and outside of condor job are different, try removing ${HOME}/.docker"
+    #docker info
+    exit 1
+    #docker run --platform linux/amd64  -v /Volumes:/Volumes -v /Users:/Users -v /tmp:/tmp -w=$HOME/eic --rm -e EIC_SHELL_PREFIX=$USER/eic/local -e EIC_SHELL=1 eicweb/jug_xl:nightly eic-shell "bash $0 $1 $2 $3 $4 $5"
   fi
 
   exit
@@ -27,11 +31,13 @@ echo "GEN_FILE=$2"
 echo "SIM_FILE=$3"
 echo "REC_FILE=$4"
 echo "BENCHMARK_DIR=$5"
+echo "TIME=$6"
 export JOB_NUMBER=$1
 export GEN_FILE=$2
 export SIM_FILE=$3
 export REC_FILE=$4
 export BDIR=$5
+export TIME=$6
 # if FILE is "/foo/bar/file"
 # dirname $FILE is "/foo/bar"
 # basename $FILE is "file"
@@ -45,11 +51,10 @@ cd $BDIR
 source /opt/detector/setup.sh
 source .local/bin/env.sh
 
-
 export PARTICLE="electron"
 export E_START=${ENERGY_RANGE[$JOB_NUMBER]}
 export E_END=$E_START
 
 echo "BENCHMARK_N_EVENTS=$BENCHMARK_N_EVENTS"
-bash benchmarks/barrel_ecal/run_emcal_barrel_particles_parallel.sh
-#/usr/bin/time -f "%e seconds, %P cpu usage, %S system time, %U user time" -a -o  bash benchmarks/barrel_ecal/run_emcal_barrel_particles_parallel.sh
+#bash benchmarks/barrel_ecal/run_emcal_barrel_particles_parallel.sh
+/usr/bin/time -f "%e seconds, %P cpu usage, %S system time, %U user time" -a -o  bash benchmarks/barrel_ecal/run_emcal_barrel_particles_parallel.sh
