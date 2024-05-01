@@ -20,7 +20,6 @@ if [ ! -n "$EIC_SHELL" ]; then
     echo "If it's not fixed while eic-shell is running, check \`docker info\`. If outputs from inside and outside of condor job are different, try removing ${HOME}/.docker"
     #docker info
     exit 1
-    #docker run --platform linux/amd64  -v /Volumes:/Volumes -v /Users:/Users -v /tmp:/tmp -w=$HOME/eic --rm -e EIC_SHELL_PREFIX=$USER/eic/local -e EIC_SHELL=1 eicweb/jug_xl:nightly eic-shell "bash $0 $1 $2 $3 $4 $5"
   fi
 
   exit
@@ -38,10 +37,10 @@ export SIM_FILE=$3
 export REC_FILE=$4
 export BDIR=$5
 export TIME=$6
-# if FILE is "/foo/bar/file"
-# dirname $FILE is "/foo/bar"
-# basename $FILE is "file"
+# if GEN_FILE="/foo/bar/file"
+# GEN_DIR="/foo/bar"
 export GEN_DIR=$(dirname $GEN_FILE)
+# GEN_BASE="file"
 export GEN_BASE=$(basename $GEN_FILE)
 
 ENERGY_RANGE=($(seq 0.5 0.3 5.0))
@@ -56,5 +55,4 @@ export E_START=${ENERGY_RANGE[$JOB_NUMBER]}
 export E_END=$E_START
 
 echo "BENCHMARK_N_EVENTS=$BENCHMARK_N_EVENTS"
-#bash benchmarks/barrel_ecal/run_emcal_barrel_particles_parallel.sh
 /usr/bin/time -f "%e seconds, %P cpu usage, %S system time, %U user time" -a -o  bash benchmarks/barrel_ecal/run_emcal_barrel_particles_parallel.sh

@@ -27,9 +27,13 @@ export JUGGLER_REC_FILE="${REC_FILE}"
 echo "JUGGLER_N_EVENTS = ${JUGGLER_N_EVENTS}"
 echo "DETECTOR = ${DETECTOR}"
 
-GEN=benchmarks/barrel_ecal/scripts/emcal_barrel_particles_gen_${TIME}_${JOB_NUMBER}.cxx
+SIGNATURE="${TIME}_${JOB_NUMBER}"
+GEN=benchmarks/barrel_ecal/scripts/emcal_barrel_particles_gen_${SIGNATURE}.cxx
+READ=benchmarks/barrel_ecal/scripts/emcal_barrel_particles_reader_parallel_${SIGNATURE}.cxx
 
-cp benchmarks/barrel_ecal/scripts/emcal_barrel_particles_gen.cxx ${GEN} && sed -ibackup_${JOB_NUMBER} "s/emcal_barrel_particles_gen/emcal_barrel_particles_gen_${TIME}_${JOB_NUMBER}/" ${GEN}
+cp benchmarks/barrel_ecal/scripts/emcal_barrel_particles_gen.cxx ${GEN} && sed -ibackup_${SIGNATURE} "s/emcal_barrel_particles_gen/emcal_barrel_particles_gen_${SIGNATURE}/" ${GEN}
+
+cp benchmarks/barrel_ecal/scripts/emcal_barrel_particles_reader_parallel.cxx ${READ} && sed -ibackup_${SIGNATURE} "s/emcal_barrel_particles_reader_parallel/emcal_barrel_particles_reader_parallel_${SIGNATURE}/" ${READ}
 
 # Generate the input events
 root -b -q "${GEN}+(${JUGGLER_N_EVENTS}, ${E_START}, ${E_END}, \"${PARTICLE}\")"
@@ -37,8 +41,14 @@ if [[ "$?" -ne "0" ]] ; then
   echo "ERROR running script: generating input events"
   exit 1
 fi
+# Plot the input events
+root -b -q "${READ}+(\"${PARTICLE}\")"
+if [[ "$?" -ne "0" ]] ; then
+  echo "ERROR running script: plotting input events"
+  exit 1
+fi
 
-rm ${GEN}
+rm -f *${SIGNATURE}*
 
 ddsim --runType batch \
       -v WARNING \
