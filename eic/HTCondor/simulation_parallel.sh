@@ -5,16 +5,17 @@
 # then setup enviromnet and build detector
 # source .local/bin/env.sh && .local/bin/build_detector.sh
 
+EXE_DIR=$(dirname $5)
 if [ ! -n "$EIC_SHELL" ]; then
   NUM_CONTAINER=$(docker ps | grep eicweb | wc -l)
   if [ $NUM_CONTAINER -gt 1 ]; then
-    echo "ERROR: There're more than one attachable containers. Containers should be stopped except one."
-    exit 1
+    # TODO: use docker info and find container which is created by $USER
+    echo "WARNING: There're more than one attachable containers."
   fi
-  CONTAINER_ID=$(docker ps | grep eicweb | cut -d ' ' -f 1)
+  CONTAINER_ID=$(docker ps | grep eicweb | cut -d ' ' -f 1 | head -n 1)
   echo "CONTAINER_ID=$CONTAINER_ID"
   if [ -n "$CONTAINER_ID" ]; then
-    docker exec -e EIC_SHELL=1 ${CONTAINER_ID} eic-shell "bash simulation_parallel.sh $1 $2 $3 $4 $5 $6"
+    docker exec -e EIC_SHELL=1 ${CONTAINER_ID} eic-shell "bash ${EXE_DIR}/simulation_parallel.sh $1 $2 $3 $4 $5 $6"
   else
     echo "ERROR: No attachable container found. Run eic-shell in other terminal."
     echo "If it's not fixed while eic-shell is running, check \`docker info\`. If outputs from inside and outside of condor job are different, try removing ${HOME}/.docker"
