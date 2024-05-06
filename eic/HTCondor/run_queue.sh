@@ -29,6 +29,7 @@ echo "TIME=$TIME"
 EIC_DIR="/Users/skku_server/eic"
 
 export JOB_EXE=${HOME}/eic/simulation_parallel.sh
+export PREPROCESS_EXE=
 export POSTPROCESS_EXE=
 
 export JOB_SIZE=16
@@ -64,23 +65,23 @@ done
 # file 0 for generated input
 export PREFIX_FILES_0="${JOB_DIR}/gen"
 mkdir -p ${PREFIX_FILES_0}
-chmod 775 ${PREFIX_FILES_0}
+chmod -R 775 ${PREFIX_FILES_0}
 export FILE_0='gen_$(Process).hepmc'
 FILE_0="${PREFIX_FILES_0}/${FILE_0}"
 
 # ============================================= 
 # file 1
 export PREFIX_FILES_1="${JOB_DIR}/sim"
-mkdir -p $JOB_DIR/sim
-chmod 775 ${PREFIX_FILES_1}
+mkdir -p ${PREFIX_FILES_1}
+chmod -R 775 ${PREFIX_FILES_1}
 export FILE_1='sim_$(Process).edm4hep.root'
 FILE_1="${PREFIX_FILES_1}/${FILE_1}"
 
 # ============================================= 
 # file 2
 export PREFIX_FILES_2="${JOB_DIR}/rec"
-mkdir -p $JOB_DIR/rec
-chmod 775 ${PREFIX_FILES_2}
+mkdir -p ${PREFIX_FILES_2}
+chmod -R 775 ${PREFIX_FILES_2}
 export FILE_2='rec_$(Process).root'
 FILE_2="${PREFIX_FILES_2}/${FILE_2}"
 
