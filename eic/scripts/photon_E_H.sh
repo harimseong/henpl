@@ -2,14 +2,10 @@
 
 set -e
 
+#============================================================
 # you need to run docker container before running this script.
 # ./eic-shell
-# then setup enviromnet and build detector
-# source .local/bin/env.sh && .local/bin/build_detector.sh
-
-if [ "$(uname)" == "Darwin" ]; then
-  source /etc/zprofile # using colima for Linux kernel VM
-fi
+#============================================================
 
 if [ ! -n "$EIC_SHELL" ]; then
   JOB_EXE=$8
@@ -23,7 +19,7 @@ if [ ! -n "$EIC_SHELL" ]; then
   CONTAINER_ID=$(docker ps | grep eicweb | cut -d ' ' -f 1 | head -n 1)
   echo "CONTAINER_ID=$CONTAINER_ID"
   if [ -n "$CONTAINER_ID" ]; then
-    docker exec -e EIC_SHELL=1 ${CONTAINER_ID} eic-shell "bash ${JOB_EXE} $1 $2 $3 $4 $5 $6 $7"
+    docker exec -e EIC_SHELL=1 ${CONTAINER_ID} /opt/local/bin/eic-shell "bash ${JOB_EXE} $1 $2 $3 $4 $5 $6 $7"
   else
     echo "ERROR: No attachable container found. Run eic-shell in other terminal."
     echo "If it's not fixed while eic-shell is running, check \`docker info\`. If outputs from inside and outside of condor job are different, try removing ${HOME}/.docker"
@@ -48,22 +44,36 @@ export BDIR=$5
 export TIME=$6
 export JOB_DIR=$7
 
-ENERGY_RANGE=(0.5 1) # 2 3 5 8 10 12 15 18) # 10
-ETA_LOW=( -1.7 -1.6 -1.5 -1   -0.5 0   0.5 1   1.2) # 10
-ETA_HIGH=(-1.6 -1.5 -1   -0.5  0   0.5 1   1.2 1.3)
+# JOB_SIZE in run.sh should be equal to
+# size of ENERGY_RANGE * size of ETA_LOW
+#ENERGY_RANGE=(0.10 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.75 1.00 1.50 2.00 2.50 3.00 4.00 5.00 6.00 7.00 8.00 9.00 10.00 11.00 12.00 13.50 15.00 16.50 18.0) # 22
+ENERGY_RANGE=(0.15 0.20 0.25 0.35 0.40 0.45) # 6
+ETA_RANGE=(-1.7 -1.6 -1.5 -1.0 -0.5 0.0 0.5 1.0 1.2 1.3) # 10
+ETA_RANGE_SIZE=${#ETA_RANGE[@]}
+ETA_LOW=()
+ETA_HIGH=()
+for i in $(seq 0 $((ETA_RANGE_SIZE - 2)))
+do
+  ETA_LOW[$i]=${ETA_RANGE[i]}
+  ETA_HIGH[$i]=${ETA_RANGE[i + 1]}
+done
 
 cd $BDIR
 
-export BENCHMARK_N_EVENTS=1000
+source /usr/local/share/eic/epic-local/bin/thisepic.sh epic
 
-source /opt/detector/epic-*_main/bin/thisepic.sh
-source .local/bin/env.sh
+export BENCHMARK_N_EVENTS=5000
+export JUGGLER_N_EVENTS=${BENCHMARK_N_EVENTS}
 
-export PARTICLE="electron"
-export E_START=${ENERGY_RANGE[$((JOB_NUMBER / 9))]}
+echo "DETECTOR_PATH=${DETECTOR_PATH}"
+echo "DETECTOR_CONFIG=${DETECTOR_CONFIG}"
+
+ETA_RANGE_COUNT=${#ETA_LOW[@]}
+export PARTICLE="photon"
+export E_START=${ENERGY_RANGE[$((JOB_NUMBER / ETA_RANGE_COUNT))]}
 export E_END=$E_START
-export ETA_START=${ETA_LOW[$((JOB_NUMBER % 9))]}
-export ETA_END=${ETA_HIGH[$((JOB_NUMBER % 9))]}
+export ETA_START=${ETA_LOW[$((JOB_NUMBER % ETA_RANGE_COUNT))]}
+export ETA_END=${ETA_HIGH[$((JOB_NUMBER % ETA_RANGE_COUNT))]}
 
 echo "E=${E_START}"
 echo "ETA_START=${ETA_START}"
@@ -79,5 +89,3 @@ echo "BENCHMARK_N_EVENTS=$BENCHMARK_N_EVENTS"
 /usr/bin/time -f "%e seconds, %P cpu usage, %S system time, %U user time" -a -o  bash benchmarks/barrel_ecal/run_emcal_barrel_particles_parallel.sh
 
 eicrecon -Ppodio:output_include_collections=MCParticles,GeneratedParticles,ReconstructedParticles,EcalBarrelScFiRawHits,EcalBarrelScFiRecHits,EcalBarrelScFiClusters,EcalBarrelScFiClusterAssociations -Pplugins=janadot -Ppodio:output_file=${REC_FILE} ${SIM_FILE}
-
-chmod -R 775 ${BDIR}

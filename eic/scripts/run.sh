@@ -1,5 +1,26 @@
 #!/usr/bin/bash
 
+SUBMISSION_TEMPLATE="
+executable		= \${JOB_EXE}
+arguments		= \${JOB_ARG}
+
+should_transfer_files	= IF_NEEDED
+when_to_transfer_output	= ON_EXIT
+
+initialdir		= \${JOB_DIR}/job_\$(Process)
+
+request_cpus	= 1
+request_memory	= 256M 
+request_disk	= 512M
+
+#num_retries	= 2
+output		= out.txt
+log		= log.txt
+error		= err.txt
+
+queue \${JOB_SIZE}
+"
+
 set -e
 
 watch() {
@@ -19,6 +40,7 @@ if [ "$1" == "-w" ]; then
   exit
 fi
 
+
 WAIT_JOB_COMPLETION=1
 export TIME="$(date "+%y%m%d_%H%M%S")"
 echo "TIME=$TIME"
@@ -28,12 +50,15 @@ echo "TIME=$TIME"
 ########################################################
 
 # they should be absoulte path
-export JOB_EXE=/Users/hseong/eic/electron_E_H.sh
+#export JOB_EXE=/usr/local/share/eic/electron_E_H.sh
+export JOB_EXE=/usr/local/share/eic/scripts/photon_E_H.sh
 export PREPROCESS_EXE=""
 export POSTPROCESS_EXE=""
 
-EIC_DIR="/Users/skku_server/eic"
-export JOB_SIZE=18
+EIC_DIR="/usr/local/share/eic"
+#export JOB_SIZE=180 # for electron
+#export JOB_SIZE=198 # for photon 
+export JOB_SIZE=60
 export JOB_NUM_ARR=$(seq 0 $((JOB_SIZE - 1)))
 export BENCHMARK_DIR="${EIC_DIR}/detector_benchmarks"
 
@@ -52,16 +77,16 @@ echo "JOB_SIZE=${JOB_SIZE}"
 # job directory                                        #
 ########################################################
 TEMP=$(basename ${JOB_EXE})
-export JOB_DIR="${HOME}/eic/result_${TEMP%.*}_${TIME}"
+export JOB_DIR="/usr/local/share/eic/results/result_${TEMP%.*}_${TIME}"
 
-if [ -a $JOB_DIR ];
+if [ -a ${JOB_DIR} ];
 then
-  echo "$0: $JOB_DIR directory already exists."
+  echo "$0: ${JOB_DIR} directory already exists."
   exit 1
 fi
 
 echo "job directory list:"
-mkdir $JOB_DIR
+mkdir ${JOB_DIR}
 chmod -R 775 ${JOB_DIR}
 for i in ${JOB_NUM_ARR}
 do
@@ -116,9 +141,11 @@ sleep 1
 ########################################################
 export JOB_ARG='"''$(Process)'" ${FILE_0} ${FILE_1} ${FILE_2} ${BENCHMARK_DIR} ${TIME} ${JOB_DIR} ${JOB_EXE}"'"'
 
-envsubst < .condor_work_queue.template > condor_work.sub
-BATCH_NAMES=$(condor_submit condor_work.sub | grep cluster | sed 's/.*cluster \([0-9]*\)./\1/')
+printf '%b\n' "${SUBMISSION_TEMPLATE}" > .condor_${TIME}.template
+envsubst < .condor_${TIME}.template > .condor_${TIME}.sub
+BATCH_NAMES=$(condor_submit .condor_${TIME}.sub | grep cluster | sed 's/.*cluster \([0-9]*\)./\1/')
 echo "batch '${BATCH_NAMES}' submitted"
+rm .condor_${TIME}.template .condor_${TIME}.sub
 
 ########################################################
 # postprocess                                          #
