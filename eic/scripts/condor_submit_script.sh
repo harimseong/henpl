@@ -10,8 +10,8 @@ when_to_transfer_output	= ON_EXIT
 initialdir		= \${JOB_DIR}/job_\$(Process)
 
 request_cpus	= 1
-request_memory	= 256M 
-request_disk	= 512M
+request_memory	= 32M 
+request_disk	= 32M
 
 #num_retries	= 2
 output		= out.txt

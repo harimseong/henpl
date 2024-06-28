@@ -12,53 +12,24 @@
 #include <sstream>
 #include <vector>
 
-// 128 is arbitrary value for size of static array.
-constexpr unsigned int max_ebin = 128;
-constexpr unsigned int max_etabin = 128;
+#include "fSam.hpp"
 
-const std::vector<Double_t> electron_ebins =
-{
-    0.5,  0.6,  0.7,  0.8, 
-    0.9,  1.0,  1.5,  2.0,
-    2.5,  3.0,  4.0,  5.0,
-    6.0,  7.0,  8.0,  9.0,
-   10.0, 11.0, 12.0, 13.5,
-   15.0, 16.5, 18.0
+class DrawfSamInit {
+
+  Double_t ETAx[max_etabin];
+  Double_t ETAex[max_etabin];
+  Int_t ETAn = ETABINS.size() - 1;
+
+
+  DrawfSamInit() {
+    for (int i = 1; i < ETABINS.size(); ++i) {
+      ETAx[i - 1] = (ETABINS[i] + ETABINS[i - 1]) / 2;
+      ETAex[i - 1] = (ETABINS[i] - ETABINS[i - 1]) / 2;
+    }
+  }
+  ~DrawfSamInit() {
+  }
 };
-
-const std::vector<Double_t> photon_ebins =
-{
-    0.1, 0.15, 0.20, 0.25,
-    0.3, 0.35, 0.40, 0.45,
-    0.5, 0.75,  1.0,  1.5,
-    2.0,  2.5,  3.0,  4.0,
-    5.0,  6.0,  7.0,  8.0,
-    9.0, 10.0, 11.0, 12.0,
-   13.5, 15.0, 16.5, 18.0
-};
-
-constexpr std::array ETABINS{-1.7, -1.6, -1.5, -1.0, -0.5,
-                             0.0,  0.5,  1.0,  1.2,  1.3};
-
-constexpr Int_t ETAn = ETABINS.size() - 1;
-
-// TODO: use ETABINS + ETABINS_end / 2 instead of ETAx
-constexpr Double_t ETAx[ETAn] = {-1.65, -1.55, -1.25, -0.75, -0.25,
-                                 0.25,  0.75,  1.1,   1.25};
-constexpr Double_t ETAex[ETAn] = {0.05, 0.05, 0.25, 0.25, 0.25,
-                                  0.25, 0.25, 0.1,  0.05};
-
-Int_t Nevts = 5000;
-const std::vector<std::pair<TString, TString>> files = {
-    {"/usr/local/share/eic/results/electron_5000evt/rec/results/"
-     "fsam_electron_20240612_152439.root",
-     "electron"},
-    // TODO: use updated root
-    {"/usr/local/share/eic/results/photon_5000evt/rec/results/"
-     "fsam_photon_20240603_61015.root",
-     "photon"}};
-
-const std::string savePath = "/usr/local/share/eic/results";
 
 void setpad(TVirtualPad *pad, Double_t top = 0.15, Double_t left = 0.17, Double_t right = 0.00, Double_t bottom = 0.15);
 void hset(TGraphErrors &hid, TString xtit = "", TString ytit = "",
@@ -104,7 +75,6 @@ void fSam(const TString &fileName, const TString &tag) {
   }
 
   // energy bin
-
   gStyle->SetOptFit(0); // gStyle->SetOptFit(1011);
   gStyle->SetTitleFontSize(0.1);
   gStyle->SetTitleAlign(23);
@@ -122,14 +92,14 @@ void fSam(const TString &fileName, const TString &tag) {
 
   TF1 *fitFunc = CreateFitFunc(tag);
   fitFunc->SetLineWidth(1);
-  fitFunc->SetRange(0, 2 * Ex[En - 1] - Ex[En - 2]);
+  fitFunc->SetRange(Ex[0] - 0.1, 2 * Ex[En - 1] - Ex[En - 2]);
 
   std::vector<TGraphErrors *> fitParamGraphs;
   for (int i = 0; i < fitFunc->GetNpar(); ++i) {
     fitParamGraphs.push_back(new TGraphErrors(ETAn));
     fitParamGraphs.back()->SetTitle(Form("p%d", i));
   }
-  fitParamCanvas->Divide(fitFunc->GetNpar() / 3, 3);
+  fitParamCanvas->Divide(1 + fitFunc->GetNpar() / 3, 3);
 
   for (int eta = 0; eta < ETAn; ++eta) {
     canvasE->cd(eta + 1);
@@ -357,32 +327,36 @@ int DrawfSam() {
 TF1 *CreateFitFunc(const TString &tag) {
   TF1 *ff;
 
+/*
   if (tag == "electron") {
     ff = new TF1("exponential_fit",
-                 "[0] - [1]/x^[2]"); // Set margin to x-axis than E bins
+                 "[0] - [1]/(x - [2])^[3]"); // Set margin to x-axis than E bins
     ff->SetParameter(0, 0.1);
-    ff->SetParameter(1, 5);
-    ff->SetParameter(2, 1);
+    ff->SetParameter(1, 0.02);
+    ff->SetParameter(2, 0.3);
+    ff->SetParameter(3, 0.5);
+*/
+    ff = new TF1("exponential_fit",
+                 "[0] - [1]/x"); // Set margin to x-axis than E bins
+    ff->SetParameter(0, 0.02);
+    ff->SetParameter(1, 0.3);
+/*
   } else if (tag == "photon") {
-
-    // ff = new TF1("exponential_fit", "[0]/([1] + exp(- [2]*x + [3]))"); // Set
-    // margin to x-axis than E bins ff = new TF1("polynomial_fit", "pol9"); ff =
-    // new TF1("inverse_exponential_fit", "[0] / ([1] + exp(- [2]*x + [3]) +
-    // [4]*x^[5])");
-    ff = new TF1("inverse_exponential_fit", "[0] - [1] / x^[2]");
-    // ff = new TF1("log_fit", "[0]*log(x+[1])+[2]"); // Set margin to x-axis
-    // than E bins ff = new TF1("tanh_fit", "[0]*((exp([1]*x + [2]) -
-    // exp(-([1]*x + [2]))) / (exp([1]*x + [2]) + exp(-([1]*x + [2])))) + [3]");
-    // // Set margin to x-axis than E bins ff = new TF1("tanh_fit",
-    // "[0]*tanh([1]*x + [2]) + [3]"); // Set margin to x-axis than E bins
+    ff = new TF1("exponential_fit", "[0]/([1] + exp(- [2]*x + [3]))");
+    ff = new TF1("polynomial_fit", "pol9");
+    ff = new TF1("inverse_exponential_fit", "[0] / ([1] + exp(- [2]*x + [3]) + [4]*x^[5])");
+    ff = new TF1("inverse_exponential_fit", "[0] - [1] / (x + [2])^[3]");
+    ff = new TF1("log_fit", "[0]*log(x+[1])+[2]");
+    ff = new TF1("tanh_fit", "[0]*((exp([1]*x + [2]) - exp(-([1]*x + [2]))) / (exp([1]*x + [2]) + exp(-([1]*x + [2])))) + [3]");
+    ff = new TF1("tanh_fit", "[0]*tanh([1]*x + [2]) + [3]");
     ff->SetParameter(0, 0.05);
     ff->SetParameter(1, 0.37);
-    ff->SetParameter(2, -0.0013);
-    ff->SetParameter(3, -0.064);
+    ff->SetParameter(2, 0.0013);
+    ff->SetParameter(3, 1);
     ff->SetParameter(4, -0.73);
     ff->SetParameter(5, 0.028);
   }
-
+  */
   return ff;
 }
 

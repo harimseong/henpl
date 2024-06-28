@@ -3,28 +3,29 @@
 set -e
 
 export TIME="$(date "+%y%m%d_%H%M%S")"
-export BENCHMARK_N_EVENTS=2000
-EIC_DIR="/usr/local/share/eic"
+export BENCHMARK_N_EVENTS=2500
+EIC_DIR="/eic"
 
 # particles
 PARTICLES=(
 "ELECTRON"
-"PHOTON"
+#"PHOTON"
 )
 
 
 # energy 
 ELECTRON_ENERGY_RANGE=(
-0.50  0.75
-1.00  1.50
-2.00  2.50
-3.00  4.00
-5.00  6.00
-7.00  8.00
-9.00  10.00
-11.00 12.00
-13.50 15.00
-16.50 18.00
+0.75
+#0.50  0.75
+#1.00  1.50
+#2.00  2.50
+#3.00  4.00
+#5.00  6.00
+#7.00  8.00
+#9.00  10.00
+#11.00 12.00
+#13.50 15.00
+#16.50 18.00
 )
 PHOTON_ENERGY_RANGE=(
 0.10  0.15
@@ -40,10 +41,9 @@ PHOTON_ENERGY_RANGE=(
 9.00  10.00
 11.00 12.00
 13.50 15.00
-16.50 18.0
+16.50 18.00
 )
 ENERGY_RANGE=
-
 
 # eta
 ETA_RANGE=(
@@ -99,7 +99,7 @@ submit_jobs() {
 
     JOB_EXE=$(readlink -f $0)
 
-    bash run.sh ${JOB_EXE} ${JOB_DIR} $((ENERGY_RANGE_SIZE * ETA_RANGE_SIZE)) ${particle}
+    bash condor_submit_script.sh ${JOB_EXE} ${JOB_DIR} $((ENERGY_RANGE_SIZE * ETA_RANGE_COUNT)) ${particle}
   done
 }
 
@@ -155,7 +155,7 @@ run_simulation() {
 
   cd $BENCHMARK_DIR
 
-  source /usr/local/share/eic/epic-local/bin/thisepic.sh epic
+  source ${EIC_DIR}/epic-local/bin/thisepic.sh epic
 
   export JUGGLER_N_EVENTS=${BENCHMARK_N_EVENTS}
 
@@ -182,7 +182,7 @@ run_simulation() {
 
   /usr/bin/time -f "%e seconds, %P cpu usage, %S system time, %U user time" -a -o  bash benchmarks/barrel_ecal/run_emcal_barrel_particles_parallel.sh
 
-  eicrecon -Ppodio:output_include_collections=MCParticles,GeneratedParticles,ReconstructedParticles,EcalBarrelScFiRawHits,EcalBarrelScFiRecHits,EcalBarrelScFiClusters,EcalBarrelScFiClusterAssociations -Pplugins=janadot -Ppodio:output_file=${REC_FILE} ${SIM_FILE}
+  eicrecon -Ppodio:output_collections=MCParticles,GeneratedParticles,ReconstructedParticles,EcalBarrelScFiRawHits,EcalBarrelScFiRecHits,EcalBarrelScFiClusters,EcalBarrelScFiClusterAssociations -Pplugins=janadot -Ppodio:output_file=${REC_FILE} ${SIM_FILE}
 }
 
 case "$1" in
