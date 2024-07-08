@@ -41,7 +41,12 @@ if [ "$1" == "-w" ]; then
 elif [ $# -le 3 ] || [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
   echo "This shell script wraps around condor_submit command and provides simple interface."
   echo "It registers N condor jobs executing EXE and result will be stored in DIR."
-  echo "$0: usage: $> bash  $0  EXE  DIR  N  [arguments]"
+  echo "usage: $> bash  $0  EXE  DIR  N  [arguments]"
+  echo "arguments for executable will be:
+\$1=\"EXE\"
+\$2=\"DIR\"
+\$3=\"(an integer ranges from [0, N - 1])\"
+\$@=\"[arguments]\""
   exit 1
 fi
 
@@ -61,10 +66,10 @@ if [ -z ${JOB_EXE} ]; then
 fi
 
 echo "arguments for executable:
-1: ${JOB_EXE}
-2: ${JOB_DIR}
-3: an integer ranges from [0, $((JOB_SIZE - 1))]
-@: ${@:4:256}
+\$1=\"${JOB_EXE}\"
+\$2=\"${JOB_DIR}\"
+\$3=\"(an integer ranges from [0, $((JOB_SIZE - 1))])\"
+\$@=\"${@:4:256}\"
 "
 
 POSTPROCESS_EXE=""

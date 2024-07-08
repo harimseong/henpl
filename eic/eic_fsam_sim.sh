@@ -3,7 +3,7 @@
 set -e
 
 export TIME="$(date "+%y%m%d_%H%M%S")"
-export BENCHMARK_N_EVENTS=2500
+export BENCHMARK_N_EVENTS=5000
 EIC_DIR="/eic"
 
 # particles
@@ -12,20 +12,20 @@ PARTICLES=(
 #"PHOTON"
 )
 
-
 # energy 
 ELECTRON_ENERGY_RANGE=(
-0.75
-#0.50  0.75
-#1.00  1.50
-#2.00  2.50
-#3.00  4.00
-#5.00  6.00
-#7.00  8.00
-#9.00  10.00
-#11.00 12.00
-#13.50 15.00
-#16.50 18.00
+0.50  
+0.60  0.70
+0.80  0.90
+1.00  1.50
+2.00  2.50
+3.00  4.00
+5.00  6.00
+7.00  8.00
+9.00  10.00
+11.00 12.00
+13.50 15.00
+16.50 18.00
 )
 PHOTON_ENERGY_RANGE=(
 0.10  0.15
@@ -47,11 +47,14 @@ ENERGY_RANGE=
 
 # eta
 ETA_RANGE=(
--1.7  -1.6
--1.5  -1.0
--0.5  0.0
-0.5   1.0
-1.2   1.3
+-1.6  -1.4
+-1.4  -1.2
+-1.0  -0.8
+-0.6  -0.4
+-0.2  0.0
+0.2   0.4
+0.6   0.8
+1.0   1.2
 )
 ETA_RANGE_SIZE=${#ETA_RANGE[@]}
 ETA_LOW=()
@@ -97,6 +100,9 @@ submit_jobs() {
     ENERGY_RANGE=(${!TEMP})
     ENERGY_RANGE_SIZE=${#ENERGY_RANGE[@]}
 
+    echo ${ENERGY_RANGE[@]} > ${particle}_${TIME}_E.range
+    echo ${ETA_RANGE[@]} > ${particle}_${TIME}_ETA.range
+
     JOB_EXE=$(readlink -f $0)
 
     bash condor_submit_script.sh ${JOB_EXE} ${JOB_DIR} $((ENERGY_RANGE_SIZE * ETA_RANGE_COUNT)) ${particle}
@@ -136,16 +142,6 @@ run_simulation() {
   echo "JOB_NUMBER=${JOB_NUMBER}"
   echo "PARTICLE=${PARTICLE}"
 
-  export GEN_FILE="gen_${JOB_NUMBER}.hepmc"
-  export SIM_FILE="sim_${JOB_NUMBER}.edm4hep.root"
-  export REC_FILE="rec_${JOB_NUMBER}.root"
-  GEN_FILE="$(eval echo $PREFIX_GEN_FILES)/${GEN_FILE}"
-  SIM_FILE="$(eval echo $PREFIX_SIM_FILES)/${SIM_FILE}"
-  REC_FILE="$(eval echo $PREFIX_REC_FILES)/${REC_FILE}"
-  echo "GEN_FILE=$GEN_FILE"
-  echo "SIM_FILE=$SIM_FILE"
-  echo "REC_FILE=$REC_FILE"
-
   echo "BENCHMARK_DIR=$BENCHMARK_DIR"
   echo "TIME=$TIME"
 
@@ -172,17 +168,31 @@ run_simulation() {
   echo "ETA_START=${ETA_START}"
   echo "ETA_END=${ETA_END}"
 
-  export SIM_DIR=$(dirname $SIM_FILE)
-  export SIM_FILE="${SIM_DIR}/sim_E${E_START}_H${ETA_START}t${ETA_END}.root"
+  export GEN_FILE="gen_${JOB_NUMBER}.hepmc"
+  GEN_FILE="$(eval echo $PREFIX_GEN_FILES)/${GEN_FILE}"
+  SIM_DIR="$(eval echo $PREFIX_SIM_FILES)"
+  REC_DIR="$(eval echo $PREFIX_REC_FILES)"
 
-  export REC_DIR=$(dirname $REC_FILE)
+  export SIM_FILE="${SIM_DIR}/sim_E${E_START}_H${ETA_START}t${ETA_END}.root"
   export REC_FILE="${REC_DIR}/rec_E${E_START}_H${ETA_START}t${ETA_END}.root"
 
+  echo "GEN_FILE=$GEN_FILE"
+  echo "SIM_FILE=$SIM_FILE"
+  echo "REC_FILE=$REC_FILE"
   echo "BENCHMARK_N_EVENTS=$BENCHMARK_N_EVENTS"
 
   /usr/bin/time -f "%e seconds, %P cpu usage, %S system time, %U user time" -a -o  bash benchmarks/barrel_ecal/run_emcal_barrel_particles_parallel.sh
 
-  eicrecon -Ppodio:output_collections=MCParticles,GeneratedParticles,ReconstructedParticles,EcalBarrelScFiRawHits,EcalBarrelScFiRecHits,EcalBarrelScFiClusters,EcalBarrelScFiClusterAssociations -Pplugins=janadot -Ppodio:output_file=${REC_FILE} ${SIM_FILE}
+  echo "eicrecon starts"
+
+  eicrecon -Ppodio:output_collections=MCParticles,GeneratedParticles,ReconstructedParticles,EcalBarrelScFiRawHits,EcalBarrelScFiRecHits,EcalBarrelScFiClusters,EcalBarrelScFiClusterAssociations,EcalBarrelScFiHits -Pplugins=janadot -Ppodio:output_file=${REC_FILE} ${SIM_FILE}
+
+  if [ $? -eq 0 ]; then
+    echo "eicrecon ends succesfully"
+    rm ${SIM_FILE}
+  else
+    echo "eicrecon error"
+  fi
 }
 
 case "$1" in
