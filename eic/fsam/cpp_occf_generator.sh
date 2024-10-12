@@ -120,7 +120,6 @@ TEMPLATE_SRC:=
 OPEN_LIST	:=	\$(SRC)\\
 				\$(TEMPLATE_SRC)
 
-SRC			+=	main.cpp
 OBJ			:=	\$(SRC:%.cpp=%.o)
 DEP			:=	\$(OBJ:%.o=%.d)
 

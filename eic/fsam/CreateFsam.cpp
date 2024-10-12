@@ -118,7 +118,7 @@ void CreateFsamHist(
       // get file name before open
       const TString simInfo = fmt::format("E{:.2f}_H{:.1f}t{:.1f}",
           energyBins[i], etaLow, etaHigh);
-      const TString inputName = fmt::format("{}/rec/rec_{}.root",
+      const TString inputFIleName = fmt::format("{}/rec/rec_{}.root",
           pathPrefix, simInfo);
 
       // open a data file containing simulated and reconstructed hits 
@@ -223,7 +223,7 @@ void CreateFsamHist(
         double upFit = hist->GetMean() + 5 * hist->GetStdDev();
         double downFit = hist->GetMean() - 5 * hist->GetStdDev();
         hist->Fit("gause", "", "", downFit, upFit);
-        hist->GexXaxis()->SetRangeUser(downFit, upFit);
+        hist->GetXaxis()->SetRangeUser(downFit, upFit);
         TF1* gaus = hist->GetFunction("gaus");
         gausFitMean.push_back(gaus->GetParameter(1));
         gausFitMeanError.push_back(gaus->GetParError(1));

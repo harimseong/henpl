@@ -8,54 +8,82 @@ EIC_DIR="/eic"
 
 # particles
 PARTICLES=(
-"ELECTRON"
-#"PHOTON"
+  "ELECTRON"
+  #"PHOTON"
 )
 
 # energy 
 ELECTRON_ENERGY_RANGE=(
-0.50  
-0.60  0.70
-0.80  0.90
-1.00  1.50
-2.00  2.50
-3.00  4.00
-5.00  6.00
-7.00  8.00
-9.00  10.00
-11.00 12.00
-13.50 15.00
-16.50 18.00
+  0.50
+  0.60
+  0.70
+  0.80
+  0.90
+  1.00
+  1.50
+  2.00
+  2.50
+  3.00
+  4.00
+  5.00
+  6.00
+  7.00
+  8.00
+  9.00
+  10.00
+  11.00
+  12.00
+  13.50
+  15.00
+  16.50
+  18.00
 )
 PHOTON_ENERGY_RANGE=(
-0.10  0.15
-0.20  0.25
-0.30  0.35
-0.40  0.45
-0.50  0.75
-1.00  1.50
-2.00  2.50
-3.00  4.00
-5.00  6.00
-7.00  8.00
-9.00  10.00
-11.00 12.00
-13.50 15.00
-16.50 18.00
+  0.10
+  0.15
+  0.20
+  0.25
+  0.30
+  0.35
+  0.40
+  0.45
+  0.50
+  0.75
+  1.00
+  1.50
+  2.00
+  2.50
+  3.00
+  4.00
+  5.00
+  6.00
+  7.00
+  8.00
+  9.00
+  10.00
+  11.00
+  12.00
+  13.50
+  15.00
+  16.50
+  18.00
 )
 ENERGY_RANGE=
 
 # eta
 ETA_RANGE=(
--1.6  -1.4
--1.4  -1.2
--1.0  -0.8
--0.6  -0.4
--0.2  0.0
-0.2   0.4
-0.6   0.8
-1.0   1.2
+  -1.7
+  -1.6
+  -1.5
+  -1.0
+  -0.5
+  0.0
+  0.5
+  1.0
+  1.2
+  1.3
 )
+
 ETA_RANGE_SIZE=${#ETA_RANGE[@]}
 ETA_LOW=()
 ETA_HIGH=()
@@ -100,8 +128,8 @@ submit_jobs() {
     ENERGY_RANGE=(${!TEMP})
     ENERGY_RANGE_SIZE=${#ENERGY_RANGE[@]}
 
-    echo ${ENERGY_RANGE[@]} > ${particle}_${TIME}_E.range
-    echo ${ETA_RANGE[@]} > ${particle}_${TIME}_ETA.range
+    echo ${ENERGY_RANGE[@]} > ${JOB_DIR}/E_range
+    echo ${ETA_RANGE[@]} > ${JOB_DIR}/ETA_range
 
     JOB_EXE=$(readlink -f $0)
 
@@ -151,14 +179,16 @@ run_simulation() {
 
   cd $BENCHMARK_DIR
 
-  source ${EIC_DIR}/epic-local/bin/thisepic.sh epic
+  source ${EIC_DIR}/epic-local-24.10.0-sensitive/bin/thisepic.sh epic
 
   export JUGGLER_N_EVENTS=${BENCHMARK_N_EVENTS}
 
   echo "DETECTOR_PATH=${DETECTOR_PATH}"
   echo "DETECTOR_CONFIG=${DETECTOR_CONFIG}"
 
-  export PARTICLE="electron"
+  export UPPER_PARTICLE=${PARTICLE}
+  export PARTICLE=$(echo ${PARTICLE} | perl -ne "print lc")
+
   export E_START=${ENERGY_RANGE[$((JOB_NUMBER / ETA_RANGE_COUNT))]}
   export E_END=$E_START
   export ETA_START=${ETA_LOW[$((JOB_NUMBER % ETA_RANGE_COUNT))]}
@@ -185,10 +215,20 @@ run_simulation() {
 
   echo "eicrecon starts"
 
-  eicrecon -Ppodio:output_collections=MCParticles,GeneratedParticles,ReconstructedParticles,EcalBarrelScFiRawHits,EcalBarrelScFiRecHits,EcalBarrelScFiClusters,EcalBarrelScFiClusterAssociations,EcalBarrelScFiHits -Pplugins=janadot -Ppodio:output_file=${REC_FILE} ${SIM_FILE}
+eicrecon -Ppodio:output_collections=\
+MCParticles,\
+GeneratedParticles,\
+ReconstructedParticles,\
+EcalBarrelScFiRawHits,\
+EcalBarrelScFiRecHits,\
+EcalBarrelScFiHits,\
+EcalBarrelImagingRawHits,\
+EcalBarrelImagingRecHits,\
+EcalBarrelImagingHits\
+ -Pplugins=janadot -Ppodio:output_file=${REC_FILE} ${SIM_FILE}
 
   if [ $? -eq 0 ]; then
-    echo "eicrecon ends succesfully"
+    echo "eicrecon ends successfully"
     rm ${SIM_FILE}
   else
     echo "eicrecon error"
