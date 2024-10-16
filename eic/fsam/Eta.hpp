@@ -15,7 +15,7 @@ public:
 
     m_middleValues.assign(m_size, 0);
     for (size_t i = 0; i < m_size; ++i) {
-      m_middleValues[i] = (m_range[i] + m_range[i + 1]) / 2;
+      m_middleValues[i] = (m_range[i] + m_range[i + 1]) / 2.0;
     }
   };
 	~Eta() = default;
@@ -39,7 +39,7 @@ public:
   };
   double getMiddleValue(int index) const
   {
-    return m_middleValues[index];
+    return m_middleValues.at(index);
   };
 
   size_t size() const

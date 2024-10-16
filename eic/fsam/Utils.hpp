@@ -37,6 +37,7 @@ parseRange(std::string filename)
   return range;
 }
 
+/*
 static std::tuple<std::string, unsigned int, unsigned int>
 parsePathprefix(std::string pathprefix)
 {
@@ -59,5 +60,6 @@ parsePathprefix(std::string pathprefix)
   }
   return tup;
 }
+*/
 
 #endif // RANGEPARSER_HPP

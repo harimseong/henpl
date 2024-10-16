@@ -19,13 +19,12 @@
 #include "ROOT/RDataFrame.hxx"
 #include "TGraph2DErrors.h"
 #include "TH1D.h"
+#include "TStyle.h"
 
 // headers
 #include "Energy.hpp"
 #include "Eta.hpp"
 #include "EventHist.hpp"
-
-static constexpr double fsamEstimate = 0.1;
 
 // vector of pairs of <column name, TH1D model>
 static const std::vector<std::pair<std::string, ROOT::RDF::TH1DModel>>
@@ -37,7 +36,7 @@ static const std::vector<std::pair<std::string, ROOT::RDF::TH1DModel>>
         "Reconstructed Energy; Energy Reconstructed [GeV]; Events",
         500,
         0.0,
-        fsamEstimate * 20.0 } },
+        2.0 } },
     std::pair{
       "fsam",
       ROOT::RDF::TH1DModel{
@@ -45,7 +44,7 @@ static const std::vector<std::pair<std::string, ROOT::RDF::TH1DModel>>
         "Sampling Fraction; Sampling Fraction; Events",
         400,
         0.0,
-        fsamEstimate * 2.0 } },
+        0.2 } },
     std::pair{
       "simEnergy",
       ROOT::RDF::TH1DModel{
@@ -53,7 +52,7 @@ static const std::vector<std::pair<std::string, ROOT::RDF::TH1DModel>>
         "Simulation Energy; Simulation Energy [GeV]; Events",
         500,
         0.0,
-        fsamEstimate * 20.0 } }
+        20.0 } }
   };
 
 double
@@ -112,22 +111,18 @@ convertFsam(double recEnergy, double genEnergy)
 class HistManager
 {
 public:
-  HistManager(const std::string& pathPrefix)
+  HistManager(const std::string& pathPrefix, bool isSensitive)
     : m_pathPrefix(pathPrefix)
-    , m_isSimEnergy(false)
+    , m_isSensitive(isSensitive)
     , m_energyBins(pathPrefix + "E_range")
     , m_etaBins(pathPrefix + "ETA_range")
   {
     std::cout << "HistManager constructor begin\n";
-    auto tuple = parsePathprefix(pathPrefix);
-
-    m_particle = std::get<0>(tuple);
-    m_date = std::get<1>(tuple);
-    m_time = std::get<2>(tuple);
 
     allocate();
     printBins();
 
+    gStyle->SetOptFit(0);
     ROOT::EnableThreadSafety();
     EventHist::s_pathPrefix = m_pathPrefix;
     std::cout << "HistManager constructor end\n";
@@ -165,7 +160,7 @@ public:
             m_energyBins[energyBin],
             m_etaBins.getLowerBound(etaBin),
             m_etaBins.getUpperBound(etaBin));
-          ROOT::RDF::RNode dataNode = getDataNode(sinInfo);
+          ROOT::RDF::RNode dataNode = getDataNode(simInfo);
           fillHists(simInfo, energyBin, etaBin, dataNode);
         }
       }
@@ -197,10 +192,14 @@ public:
 
   void storeHists()
   {
+    if (m_isSensitive == false) {
+      m_fsam2DHist->SetTitle(";Energy; Eta; Sampling fraction");
+      m_fsam2DHist->SaveAs(fmt::format("{}2Dgraph.root", m_pathPrefix).c_str());
+    } else {
+      m_simEnergy2DHist->SetTitle(";Energy; Eta; Calorimeter deposit energy");
+      m_simEnergy2DHist->SaveAs(fmt::format("{}2Dgraph.root", m_pathPrefix).c_str());
+    }
     m_file->cd();
-    m_fsam2DHist->Write();
-    // m_recEnergy2DHist->Write();
-    // m_simEnergy2DHist->Write();
     for (auto& hist : m_energyHistArr) {
       hist->Write();
     }
@@ -224,7 +223,7 @@ private:
     std::cout << "TGraph2DErrors instances allocated\n";
 
     m_file =
-      new TFile(fmt::format("{}fsam.root", m_pathPrefix).c_str(), "CREATE");
+      new TFile(fmt::format("{}1DHists.root", m_pathPrefix).c_str(), "CREATE");
     if (m_file == nullptr) {
       throw std::runtime_error("failed to create ROOT file.");
     }
@@ -234,7 +233,7 @@ private:
     std::cout << "TFile instance allocated\n";
 
     for (size_t i = 0; i < m_energyBins.size(); ++i) {
-      std::string histName = fmt::format("fsam_E{}", m_energyBins[i]);
+      std::string histName = fmt::format("E{}", m_energyBins[i]);
       TH1D* hist = new TH1D(
         histName.c_str(),
         histName.c_str(),
@@ -245,7 +244,7 @@ private:
     }
     for (size_t i = 0; i < m_etaBins.size(); ++i) {
       std::string histName =
-        fmt::format("fsam_eta{}", m_etaBins.getMiddleValue(i));
+        fmt::format("eta{}", m_etaBins.getMiddleValue(i));
       TH1D* hist = new TH1D(
         histName.c_str(),
         histName.c_str(),
@@ -294,10 +293,9 @@ private:
     // where entire detector is sensitive detector
     // to get 'calorimeter' deposit energy but 'calorimeter sensor' energy
     // deposit.
-    if (dataNode.HasColumn("EcalBarrelScFiHits")) {
+    if (m_isSensitive == true) {
       dataNode = dataNode.Define(
         "simEnergy", convertSimEnergy, { "EcalBarrelScFiHits" });
-      m_isSimEnergy = true;
     }
     std::cout << "getDataNode end\n";
     return dataNode;
@@ -319,63 +317,49 @@ private:
     // Data column for fitting is determined when it is initialized.
     // two: draw histogram to image file. not implemented yet.
     // EventHist recEHist(histTable[0].first, histTable[0].second, simInfo);
-    EventHist fsamHist(histTable[1].first, histTable[1].second, simInfo);
-    EventHist simEHist(histTable[2].first, histTable[2].second, simInfo);
-
-    auto fsamMean = fsamHist.getGausFitMean(dataNode, true);
     // auto recEMean = recEHist.getGausFitMean(dataNode);
 
-    histMutex.lock();
-    std::cout << "____________________________________________________________\n";
-    std::cout << "fsamMean = " << fsamMean.first;
-    std::cout << "energyBin = " << energyBin << ", etaBin = " << etaBin << '\n';
-    std::cout << "____________________________________________________________\n";
-    m_energyHistArr[energyBin]->SetBinContent(etaBin + 1, fsamMean.first);
-    m_energyHistArr[energyBin]->SetBinError(etaBin + 1, fsamMean.second);
-    m_etaHistArr[etaBin]->SetBinContent(energyBin + 1, fsamMean.first);
-    m_etaHistArr[etaBin]->SetBinError(energyBin + 1, fsamMean.second);
-    std::cout << "TH1D bin set\n";
-    m_fsam2DHist->SetPoint(
-      energyBin * m_etaBins.size() + etaBin,
-      m_energyBins[energyBin],
-      m_etaBins.getMiddleValue(etaBin),
-      fsamMean.first);
-    /*
-    m_fsam2DHist->SetPointError(
-      energyBin * m_etaBins.size() + etaBin,
-      0,
-      0,
-      fsamMean.second);
-    */
-    /*
-    std::cout << "TGraph2DErrors set 1\n";
-    m_recEnergy2DHist->SetPoint(
-      energyBin * m_etaBins.size() + etaBin,
-      m_energyBins[energyBin],
-      m_etaBins.getMiddleValue(etaBin),
-      recEMean.first);
-    m_recEnergy2DHist->SetPointError(
-      energyBin * m_etaBins.size() + etaBin,
-      0,
-      0,
-      recEMean.second);
-    */
-    std::cout << "TGraph2DErrors set 2\n";
-    if (false && m_isSimEnergy == true) {
-      auto simEMean = simEHist.getGausFitMean(dataNode);
+    if (m_isSensitive == false) {
+      EventHist fsamHist(histTable[1].first, histTable[1].second, simInfo);
+      auto fsamMean = fsamHist.getGausFitMean(dataNode, true);
+
+      histMutex.lock();
+      m_energyHistArr[energyBin]->SetBinContent(etaBin + 1, fsamMean.first);
+      m_energyHistArr[energyBin]->SetBinError(etaBin + 1, fsamMean.second);
+      m_etaHistArr[etaBin]->SetBinContent(energyBin + 1, fsamMean.first);
+      m_etaHistArr[etaBin]->SetBinError(energyBin + 1, fsamMean.second);
+      m_fsam2DHist->SetPoint(
+        energyBin * m_etaBins.size() + etaBin,
+        m_etaBins.getMiddleValue(etaBin),
+        m_energyBins[energyBin],
+        fsamMean.first);
+      m_fsam2DHist->SetPointError(
+        energyBin * m_etaBins.size() + etaBin,
+        m_etaBins.getMiddleValue(etaBin),
+        m_energyBins[energyBin],
+        fsamMean.second);
+      histMutex.unlock();
+    } else {
+      EventHist simEHist(histTable[2].first, histTable[2].second, simInfo);
+      auto simEMean = simEHist.getGausFitMean(dataNode, true);
+
+      histMutex.lock();
+      m_energyHistArr[energyBin]->SetBinContent(etaBin + 1, simEMean.first);
+      m_energyHistArr[energyBin]->SetBinError(etaBin + 1, simEMean.second);
+      m_etaHistArr[etaBin]->SetBinContent(energyBin + 1, simEMean.first);
+      m_etaHistArr[etaBin]->SetBinError(energyBin + 1, simEMean.second);
       m_simEnergy2DHist->SetPoint(
         energyBin * m_etaBins.size() + etaBin,
-        m_energyBins[energyBin],
         m_etaBins.getMiddleValue(etaBin),
+        m_energyBins[energyBin],
         simEMean.first);
       m_simEnergy2DHist->SetPointError(
         energyBin * m_etaBins.size() + etaBin,
-        m_energyBins[energyBin],
         m_etaBins.getMiddleValue(etaBin),
+        m_energyBins[energyBin],
         simEMean.second);
-      std::cout << "TGraph2DErrors set 3\n";
+      histMutex.unlock();
     }
-    histMutex.unlock();
     std::cout << "fillHists end\n";
   }
 
@@ -389,11 +373,7 @@ private:
   std::vector<TH1D*> m_energyHistArr;
   std::vector<TH1D*> m_etaHistArr;
 
-  bool m_isSimEnergy; // for backward compatibility
-  std::string m_particle;
-  unsigned int m_date;
-  unsigned int m_time;
-
+  bool m_isSensitive;
   const Energy m_energyBins;
   const Eta m_etaBins;
 };
