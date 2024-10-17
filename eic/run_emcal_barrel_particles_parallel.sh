@@ -79,8 +79,8 @@ ddsim --runType batch \
       --numberOfEvents ${JUGGLER_N_EVENTS} \
       --compactFile ${DETECTOR_PATH}/${DETECTOR_CONFIG}.xml \
       --inputFiles ${GEN_FILE} \
-      --outputFile ${SIM_FILE} \
-      --part.minimalKineticEnergy 0.5*GeV
+      --outputFile ${SIM_FILE}
+#     --part.minimalKineticEnergy "0.5*GeV"
 
 if [[ "$?" -ne "0" ]] ; then
   echo "ERROR running npdet"

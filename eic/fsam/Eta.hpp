@@ -47,6 +47,30 @@ public:
     return m_size;
   };
 
+  const double* getBinEdges() const
+  {
+    return m_range.data();
+  };
+
+  void printBins() const
+  {
+    std::cout << "eta bins:\n";
+    for (size_t i = 0; i < m_size; ++i) {
+      std::cout << getMiddleValue(i) << '\n';
+    }
+    std::cout << '\n';
+  };
+
+  void printBinEdges() const
+  {
+    std::cout << "eta bin edges:\n";
+    for (size_t i = 0; i < m_range.size(); ++i) {
+      std::cout << m_range[i] << '\n';
+    }
+    std::cout << '\n';
+  };
+
+
 private:
   std::vector<double> m_range;
   std::vector<double> m_middleValues;

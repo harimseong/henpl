@@ -1,32 +1,34 @@
-NAME		=	fsam
+NAME    =  fsam
 
 
-CXX			:=	c++
-CXXFLAGS:=	-Wall -Wextra -Werror -std=c++17 
-LDFLAGS := 	$(shell root-config --cflags --libs) \
-				-I/opt/local/include -L/opt/local/lib -lfmt
-DEBUGFLAGS	:=	-g -fsanitize=address
-RM			:=	rm -f
+CXX     :=  c++
+CXXFLAGS:=  -Wall -Wextra -Werror -std=c++17 
+LDFLAGS :=   $(shell root-config --cflags --libs) \
+	      -I/opt/local/include -L/opt/local/lib -lfmt
+DEBUGFLAGS  :=  -g -fsanitize=address
+RM      :=  rm -f
 
 
-SRC			:=	\
-				fsam.cpp \
-				EventHist.cpp
+SRC      :=  \
+	      fsam.cpp \
+	      HistManager.cpp \
+	      EventHist.cpp \
+	      getFsam.cpp
 
 TEMPLATE_SRC:=
 
-OPEN_LIST	:=	$(SRC)\
-				$(TEMPLATE_SRC)
+OPEN_LIST  :=  $(SRC)\
+	      $(TEMPLATE_SRC)
 
-OBJ			:=	$(SRC:%.cpp=%.o)
-DEP			:=	$(OBJ:%.o=%.d)
+OBJ      :=  $(SRC:%.cpp=%.o)
+DEP      :=  $(OBJ:%.o=%.d)
 
-STATE		:=	$(shell ls DEBUG.mode 2> /dev/null)
+STATE    :=  $(shell ls DEBUG.mode 2> /dev/null)
 ifeq ($(STATE), DEBUG.mode)
-CXXFLAGS	+=	$(DEBUGFLAGS)
-COMPILE_MODE:=	DEBUG.mode
+CXXFLAGS  +=  $(DEBUGFLAGS)
+COMPILE_MODE:=  DEBUG.mode
 else
-COMPILE_MODE:=	RELEASE.mode
+COMPILE_MODE:=  RELEASE.mode
 endif
 
 
@@ -67,5 +69,8 @@ $(NAME): $(OBJ)
 
 $(OBJ): %.o: %.cpp
 	$(CXX) $< $(CXXFLAGS) -c -o $@ $(LDFLAGS)
+
+ratio: edepRatio.cpp
+	$(CXX) $< $(CXXFLAGS) -o $@ $(LDFLAGS)
 
 -include $(DEP)
