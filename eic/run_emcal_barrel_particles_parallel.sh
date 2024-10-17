@@ -71,7 +71,7 @@ fi
 echo "input is readable"
 
 echo "simulation starts"
-rm -f ${INPUT_FILE} ${READ_FILE}
+rm -f ${INPUT_FILE}* ${READ_FILE}*
 
 ddsim --runType batch \
       -v WARNING \
