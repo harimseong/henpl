@@ -19,7 +19,7 @@ static const std::vector<std::pair<std::string, ROOT::RDF::TH1DModel>>
       "recEnergy",
       ROOT::RDF::TH1DModel{
         "recEnergy",
-        "Reconstructed Energy; Energy Reconstructed [GeV]; Events",
+        "Reconstructed energy; Reconstructed energy [GeV]; Events",
         500,
         0.0,
         2.0 } },
@@ -27,7 +27,7 @@ static const std::vector<std::pair<std::string, ROOT::RDF::TH1DModel>>
       "fsam",
       ROOT::RDF::TH1DModel{
         "fsam",
-        "Sampling Fraction; Sampling Fraction; Events",
+        "Sampling fraction; Sampling fraction; Events",
         400,
         0.0,
         0.2 } },
@@ -35,7 +35,7 @@ static const std::vector<std::pair<std::string, ROOT::RDF::TH1DModel>>
       "simEnergy",
       ROOT::RDF::TH1DModel{
         "simEnergy",
-        "Simulation Energy; Simulation Energy [GeV]; Events",
+        "Total deposited energy in BIC; Total deposited energy in BIC [GeV]; Events",
         500,
         0.0,
         20.0 } }
@@ -283,13 +283,12 @@ HistManager::fillHists(
   // Data column for fitting is determined when it is initialized.
   // two: draw histogram to image file. not implemented yet.
   // EventHist recEHist(histTable[0].first, histTable[0].second, simInfo);
-  // auto recEMean = recEHist.getGausFitMean(dataNode);
 
   if (m_isSensitive == false) {
     EventHist recEHist(histTable[0].first, histTable[0].second, simInfo);
     EventHist fsamHist(histTable[1].first, histTable[1].second, simInfo);
-    auto fsamMean = fsamHist.getGausFitMean(dataNode, false);
-    auto recEMean = recEHist.getGausFitMean(dataNode, false);
+    auto fsamMean = fsamHist.getGausFitMean(dataNode, true);
+    auto recEMean = recEHist.getGausFitMean(dataNode, true);
 
     histMutex.lock();
     m_energyHistArr[energyBin]->SetBinContent(etaBin + 1, recEMean.first);
@@ -319,7 +318,7 @@ HistManager::fillHists(
     histMutex.unlock();
   } else {
     EventHist simEHist(histTable[2].first, histTable[2].second, simInfo);
-    auto simEMean = simEHist.getGausFitMean(dataNode, false);
+    auto simEMean = simEHist.getGausFitMean(dataNode, true);
 
     histMutex.lock();
     m_energyHistArr[energyBin]->SetBinContent(etaBin + 1, simEMean.first);

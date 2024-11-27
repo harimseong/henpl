@@ -8,8 +8,8 @@ EIC_DIR="/eic"
 
 # particles
 PARTICLES=(
-  "ELECTRON"
-  #"PHOTON"
+  #"ELECTRON"
+  "PHOTON"
 )
 
 # energy 
@@ -84,55 +84,51 @@ ETA_RANGE=(
   1.3
 )
 
-ETA_RANGE_SIZE=${#ETA_RANGE[@]}
-ETA_LOW=()
-ETA_HIGH=()
-for i in $(seq 0 $((ETA_RANGE_SIZE - 2)))
-do
-  ETA_LOW[$i]=${ETA_RANGE[i]}
-  ETA_HIGH[$i]=${ETA_RANGE[i + 1]}
-done
-ETA_RANGE_COUNT=${#ETA_LOW[@]}
-
 PREFIX_GEN_FILES='${JOB_DIR}/gen'
 PREFIX_SIM_FILES='${JOB_DIR}/sim'
 PREFIX_REC_FILES='${JOB_DIR}/rec'
 
 submit_jobs() {
+  # path to store
   RESULT_DIR="${EIC_DIR}/results"
 
   for particle in ${PARTICLES[@]}
   do
     JOB_DIR="${RESULT_DIR}/${particle}_${TIME}"
     mkdir -p ${JOB_DIR}
+    chmod 775 ${JOB_DIR}
 
     # ============================================= 
     # generated input directory
     PREFIX_GEN_FILES=$(eval echo ${PREFIX_GEN_FILES})
     mkdir -p ${PREFIX_GEN_FILES}
-    chmod -R 775 ${PREFIX_GEN_FILES}
+    chmod 775 ${PREFIX_GEN_FILES}
 
     # ============================================= 
     # simulation output directory
     PREFIX_SIM_FILES=$(eval echo ${PREFIX_SIM_FILES})
     mkdir -p ${PREFIX_SIM_FILES}
-    chmod -R 775 ${PREFIX_SIM_FILES}
+    chmod 775 ${PREFIX_SIM_FILES}
 
     # ============================================= 
     # reconstructed output directory
     PREFIX_REC_FILES=$(eval echo ${PREFIX_REC_FILES})
     mkdir -p ${PREFIX_REC_FILES}
-    chmod -R 775 ${PREFIX_REC_FILES}
+    chmod 775 ${PREFIX_REC_FILES}
 
     TEMP="${particle}_ENERGY_RANGE[@]"
     ENERGY_RANGE=(${!TEMP})
     ENERGY_RANGE_SIZE=${#ENERGY_RANGE[@]}
+    ETA_RANGE_COUNT=$((${#ETA_RANGE[@]} - 1))
 
     echo ${ENERGY_RANGE[@]} > ${JOB_DIR}/E_range
     echo ${ETA_RANGE[@]} > ${JOB_DIR}/ETA_range
 
-    JOB_EXE=$(readlink -f $0)
+    JOB_EXE=.$0.${TIME}
+    cp $0 ${JOB_EXE}
+    JOB_EXE=$(readlink -f ${JOB_EXE})
 
+    echo "work directory created"
     bash condor_submit_script.sh ${JOB_EXE} ${JOB_DIR} $((ENERGY_RANGE_SIZE * ETA_RANGE_COUNT)) ${particle}
   done
 }
@@ -162,6 +158,8 @@ attach_container() {
 
 run_simulation() {
   export BENCHMARK_DIR="${EIC_DIR}/detector_benchmarks"
+  source ${EIC_DIR}/epic-local-24.10.0/bin/thisepic.sh epic
+  cd $BENCHMARK_DIR
 
   export JOB_DIR=$2
   export JOB_NUMBER=$3
@@ -173,13 +171,19 @@ run_simulation() {
   echo "BENCHMARK_DIR=$BENCHMARK_DIR"
   echo "TIME=$TIME"
 
-  TEMP="$4_ENERGY_RANGE[@]"
-  ENERGY_RANGE=(${!TEMP})
+  ENERGY_RANGE=($(cat ${JOB_DIR}/E_range))
   ENERGY_RANGE_SIZE=${#ENERGY_RANGE[@]}
 
-  cd $BENCHMARK_DIR
-
-  source ${EIC_DIR}/epic-local-24.10.0-sensitive/bin/thisepic.sh epic
+  ETA_RANGE=($(cat ${JOB_DIR}/ETA_range))
+  ETA_RANGE_SIZE=${#ETA_RANGE[@]}
+  ETA_LOW=()
+  ETA_HIGH=()
+  for i in $(seq 0 $((ETA_RANGE_SIZE - 2)))
+  do
+    ETA_LOW[$i]=${ETA_RANGE[i]}
+    ETA_HIGH[$i]=${ETA_RANGE[i + 1]}
+  done
+  ETA_RANGE_COUNT=${#ETA_LOW[@]}
 
   export JUGGLER_N_EVENTS=${BENCHMARK_N_EVENTS}
 

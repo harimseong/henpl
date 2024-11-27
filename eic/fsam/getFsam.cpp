@@ -87,11 +87,11 @@ getFsam(std::string recPath, std::string edepPath)
       fsamHist->SetBinError(j + 1, fsamError);
       graph->SetPoint(
         i * etaBins.size() + j,
-        etaBins.getMiddleValue(j) + 1.65,
+        etaBins.getMiddleValue(j),
         energyBins[i], fsam);
       graph->SetPointError(
         i * etaBins.size() + j,
-        etaBins.getMiddleValue(j) + 1.65,
+        etaBins.getMiddleValue(j),
         energyBins[i], fsamError);
     }
     delete recHist;
@@ -139,7 +139,7 @@ getFsam(std::string recPath, std::string edepPath)
     delete recHist;
     delete edepHist;
   }
-  graph->SetTitle("; Eta; Energy; Sampling fraction");
+  graph->SetTitle("Sampling fraction; Eta; Energy;");
   graph->SaveAs(fmt::format("{}fsam2Dgraph.root", resultPath).c_str());
   fsamFile->cd();
   for (TH1D* hist : fsamEHists) {

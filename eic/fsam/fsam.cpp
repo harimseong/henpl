@@ -44,7 +44,7 @@ main(int argc, char** argv)
     std::cerr << fmt::format("usage: {} PATH1 [PATH2]\n", argv[0]);
     std::cerr << fmt::format(
 "\n\
-1) if PATH2 is not given, it will generate ROOT file using data in the PATH1.\n\
+1) if PATH2 is not given, it will generate ROOT and pdf files using data in the PATH1.\n\
    if PATH1 contains \"sensitive\" keyword, it will compute deposit energy.\n\
 ");
     std::cerr << fmt::format(

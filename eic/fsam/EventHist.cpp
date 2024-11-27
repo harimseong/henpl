@@ -38,8 +38,10 @@ EventHist::getGausFitMean(ROOT::RDF::RNode& dataNode, bool draw = false)
   hist1D->SetLineColor(kBlue);
   hist1D->Draw("PE");
   std::pair<double, double> gausFitMean;
-  double upFit = hist1D->GetMean() + 5 * hist1D->GetStdDev();
-  double downFit = hist1D->GetMean() - 5 * hist1D->GetStdDev();
+  double upFit = hist1D->GetMean() + 5. * hist1D->GetStdDev();
+  double downFit = hist1D->GetMean() - 1. * hist1D->GetStdDev();
+  double up = hist1D->GetMean() + 5. * hist1D->GetStdDev();
+  double down = hist1D->GetMean() - 5. * hist1D->GetStdDev();
   Int_t fitResult = hist1D->Fit("gaus", "L", "", downFit, upFit);
   std::cout << "fitResult=" << fitResult << '\n';
   if (fitResult < 0) {
@@ -51,7 +53,7 @@ EventHist::getGausFitMean(ROOT::RDF::RNode& dataNode, bool draw = false)
     gausFitMean.first = 0;
     gausFitMean.second = 0;
   } else {
-    hist1D->GetXaxis()->SetRangeUser(downFit, upFit);
+    hist1D->GetXaxis()->SetRangeUser(down, up);
     TF1* gaus = hist1D->GetFunction("gaus");
     gausFitMean.first = gaus->GetParameter(1);
     if (gausFitMean.first < 0) {
@@ -65,7 +67,8 @@ EventHist::getGausFitMean(ROOT::RDF::RNode& dataNode, bool draw = false)
   }
   std::cout << "simInfo=" << m_simInfo << '\n';
   if (draw) {
-    cvs->SaveAs(fmt::format("{}{}.pdf", s_pathPrefix, m_simInfo).c_str());
+    cvs->SaveAs(
+      fmt::format("{}{}_{}.pdf", s_pathPrefix, m_simInfo, m_columnName).c_str());
   }
   mtx.unlock();
   return gausFitMean;
